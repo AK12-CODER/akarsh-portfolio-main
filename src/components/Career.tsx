@@ -60,6 +60,18 @@ const Career = () => {
               Managed a core team of 50 members and mentored a community group of over 1000 members, helping them in Competitive Programming and Software Development.
             </p>
           </div>
+          <div className="career-info-box">
+            <div className="career-info-in">
+              <div className="career-role">
+                <h4>B.Tech in Computer Science</h4>
+                <h5>SRMIST, Chennai, India</h5>
+              </div>
+              <h3>2019-23</h3>
+            </div>
+            <p>
+              Undergraduate degree in Computer Science and Engineering. Built a strong foundation in software development and programming. Graduated with a GPA of 8.64/10.
+            </p>
+          </div>
         </div>
       </div>
     </div>
