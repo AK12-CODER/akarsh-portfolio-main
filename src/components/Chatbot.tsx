@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from "react";
-import { FiMessageSquare, FiX, FiSend, FiDownload, FiKey, FiCheck } from "react-icons/fi";
+import { FiMessageSquare, FiX, FiSend } from "react-icons/fi";
 import { CONVERSATIONAL_SYSTEM_PROMPT } from "../data/cvData";
 import "./Chatbot.css";
 
-const ENV_GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
 
 type Message = {
   id: string;
@@ -20,14 +20,6 @@ export interface ChatLogEntry {
 
 const Chatbot = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [showKeyInput, setShowKeyInput] = useState(false);
-  const [apiKeyInput, setApiKeyInput] = useState<string>(() => {
-    return localStorage.getItem("user_gemini_api_key") || "";
-  });
-  const [savedKey, setSavedKey] = useState<string>(() => {
-    return localStorage.getItem("user_gemini_api_key") || ENV_GEMINI_API_KEY;
-  });
-
   const [inquiredRole, setInquiredRole] = useState<string>("Not Specified Yet");
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -40,7 +32,7 @@ const Chatbot = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [chatLogs, setChatLogs] = useState<ChatLogEntry[]>(() => {
     try {
-      const saved = localStorage.getItem("akarsh_chatbot_csv_logs");
+      const saved = localStorage.getItem("akarsh_portfolio_visitor_chat_logs");
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -49,36 +41,53 @@ const Chatbot = () => {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Silently save every log to localStorage
   useEffect(() => {
     try {
-      localStorage.setItem("akarsh_chatbot_csv_logs", JSON.stringify(chatLogs));
+      localStorage.setItem("akarsh_portfolio_visitor_chat_logs", JSON.stringify(chatLogs));
     } catch (err) {
       console.error("Failed to save chat logs:", err);
     }
   }, [chatLogs]);
 
+  // Expose secret global download function for Akarsh in browser console: window.downloadAkarshChatLogs()
+  useEffect(() => {
+    (window as any).downloadAkarshChatLogs = () => {
+      const logsToExport: ChatLogEntry[] = JSON.parse(
+        localStorage.getItem("akarsh_portfolio_visitor_chat_logs") || "[]"
+      );
+      if (logsToExport.length === 0) {
+        console.log("No visitor chat logs recorded yet.");
+        alert("No visitor chat logs recorded yet.");
+        return;
+      }
+
+      const headers = ["Timestamp", "Inquired Role", "Question", "Bot Response"];
+      const rows = logsToExport.map((log) => [
+        `"${log.timestamp.replace(/"/g, '""')}"`,
+        `"${log.inquiredRole.replace(/"/g, '""')}"`,
+        `"${log.question.replace(/"/g, '""')}"`,
+        `"${log.answer.replace(/"/g, '""')}"`,
+      ]);
+
+      const csvContent =
+        "data:text/csv;charset=utf-8," +
+        [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `akarsh_visitor_questions_${Date.now()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    };
+  }, []);
+
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages, isOpen, showKeyInput]);
-
-  const handleSaveKey = () => {
-    const trimmed = apiKeyInput.trim();
-    if (trimmed) {
-      localStorage.setItem("user_gemini_api_key", trimmed);
-      setSavedKey(trimmed);
-      setShowKeyInput(false);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          sender: "bot",
-          text: "✅ Gemini API Key saved successfully! Ask me anything about Akarsh's skills and experience.",
-        },
-      ]);
-    }
-  };
+  }, [messages, isOpen]);
 
   const recordLogEntry = (userQuestion: string, botAnswer: string) => {
     const entry: ChatLogEntry = {
@@ -90,28 +99,19 @@ const Chatbot = () => {
     setChatLogs((prev) => [...prev, entry]);
   };
 
-  const downloadCSV = () => {
-    if (chatLogs.length === 0) {
-      alert("No question logs recorded yet!");
-      return;
+  // Secret triple-click on chatbot title to trigger CSV log export for Akarsh
+  const titleClickCount = useRef(0);
+  const handleTitleClick = () => {
+    titleClickCount.current += 1;
+    if (titleClickCount.current >= 3) {
+      titleClickCount.current = 0;
+      if (typeof (window as any).downloadAkarshChatLogs === "function") {
+        (window as any).downloadAkarshChatLogs();
+      }
     }
-
-    const headers = ["Timestamp", "Inquired Role", "Question", "Bot Response"];
-    const rows = chatLogs.map((log) => [
-      `"${log.timestamp.replace(/"/g, '""')}"`,
-      `"${log.inquiredRole.replace(/"/g, '""')}"`,
-      `"${log.question.replace(/"/g, '""')}"`,
-      `"${log.answer.replace(/"/g, '""')}"`,
-    ]);
-
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `akarsh_chatbot_questions_${Date.now()}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    setTimeout(() => {
+      titleClickCount.current = 0;
+    }, 1500);
   };
 
   const handleSend = async () => {
@@ -127,26 +127,11 @@ const Chatbot = () => {
       setInquiredRole(userText);
     }
 
-    const activeKey = savedKey || ENV_GEMINI_API_KEY || localStorage.getItem("user_gemini_api_key") || "";
-
-    if (!activeKey) {
-      setShowKeyInput(true);
-      setTimeout(() => {
-        const fallbackText =
-          "🔑 Please enter your Gemini API key using the Key button in the header or in the box above to enable AI answers!";
-        setMessages((prev) => [...prev, { id: Date.now().toString(), sender: "bot", text: fallbackText }]);
-        recordLogEntry(userText, fallbackText);
-        setIsLoading(false);
-      }, 500);
-      return;
-    }
-
-    // Candidate endpoints to attempt in order
     const candidateEndpoints = [
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeKey}`,
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${activeKey}`,
-      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${activeKey}`,
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${activeKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${GEMINI_API_KEY}`,
     ];
 
     let data: any = null;
@@ -154,7 +139,6 @@ const Chatbot = () => {
 
     for (const url of candidateEndpoints) {
       try {
-        // Attempt 1: System instruction
         let res = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -176,7 +160,7 @@ const Chatbot = () => {
           break;
         }
 
-        // Attempt 2: Universal inline prompt payload if system_instruction failed
+        // Fallback payload without system_instruction if rejected by endpoint
         res = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -210,10 +194,11 @@ const Chatbot = () => {
       setMessages((prev) => [...prev, { id: Date.now().toString(), sender: "bot", text: botText }]);
       recordLogEntry(userText, botText);
     } else {
-      const errorText = `Unable to connect to Gemini API. Error: ${lastErrorMessage || "Invalid key or endpoint"}. Please click the 🔑 Key button above to update your API key!`;
-      setMessages((prev) => [...prev, { id: Date.now().toString(), sender: "bot", text: errorText }]);
-      recordLogEntry(userText, errorText);
-      setShowKeyInput(true);
+      console.error("Gemini API Error:", lastErrorMessage);
+      const fallbackMsg =
+        "Sorry, I am currently unable to process your query. Please try again shortly!";
+      setMessages((prev) => [...prev, { id: Date.now().toString(), sender: "bot", text: fallbackMsg }]);
+      recordLogEntry(userText, fallbackMsg);
     }
 
     setIsLoading(false);
@@ -228,48 +213,14 @@ const Chatbot = () => {
       {isOpen ? (
         <div className="chatbot-modal">
           <div className="chatbot-header">
-            <div className="chatbot-title">
+            <div className="chatbot-title" onClick={handleTitleClick} title="Akarsh AI Assistant">
               <span className="chatbot-dot"></span>
               Akarsh AI Assistant
             </div>
-            <div className="chatbot-header-actions">
-              <button
-                className={`chatbot-action-btn ${showKeyInput ? "active-key" : ""}`}
-                onClick={() => setShowKeyInput(!showKeyInput)}
-                title="Configure Gemini API Key"
-              >
-                <FiKey size={15} />
-              </button>
-              <button
-                className="chatbot-action-btn"
-                onClick={downloadCSV}
-                title={`Download CSV log (${chatLogs.length} questions recorded)`}
-              >
-                <FiDownload size={15} />
-                <span className="log-count">{chatLogs.length}</span>
-              </button>
-              <button className="chatbot-close" onClick={() => setIsOpen(false)}>
-                <FiX size={20} />
-              </button>
-            </div>
+            <button className="chatbot-close" onClick={() => setIsOpen(false)}>
+              <FiX size={20} />
+            </button>
           </div>
-
-          {showKeyInput && (
-            <div className="chatbot-key-banner">
-              <div className="key-banner-title">Gemini API Key Settings</div>
-              <div className="key-input-row">
-                <input
-                  type="password"
-                  placeholder="Paste AIzaSy... API key here"
-                  value={apiKeyInput}
-                  onChange={(e) => setApiKeyInput(e.target.value)}
-                />
-                <button onClick={handleSaveKey} disabled={!apiKeyInput.trim()}>
-                  <FiCheck size={16} /> Save
-                </button>
-              </div>
-            </div>
-          )}
 
           <div className="chatbot-messages">
             {messages.map((msg) => (
