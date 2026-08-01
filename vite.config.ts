@@ -33,7 +33,7 @@ export default defineConfig(({ mode }) => {
     env.VITE_GEMINI_API_KEY ||
     akEnvVars.VITE_GEMINI_API_KEY ||
     akEnvVars.GEMINI_API_KEY ||
-    "";
+    "AIzaSyBGLNfAVKic2C3tguEvhAIwI9mEXsaP23I";
 
   return {
     plugins: [react()],
