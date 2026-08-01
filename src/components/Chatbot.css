@@ -65,59 +65,38 @@
   gap: 8px;
 }
 
-.role-active-badge {
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 12px;
-  border: 1px solid;
-  color: #fff;
-  background: rgba(255, 255, 255, 0.08);
-  font-weight: 400;
-  letter-spacing: 0.3px;
-}
-
-.chatbot-role-bar {
-  display: flex;
-  background: rgba(0, 0, 0, 0.3);
-  padding: 6px;
-  gap: 4px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  overflow-x: auto;
-}
-
-.role-tab-btn {
-  flex: 1;
+.chatbot-header-actions {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 5px;
-  padding: 6px 8px;
-  background: transparent;
-  border: 1px solid transparent;
+  gap: 10px;
+}
+
+.chatbot-action-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #5eead4;
+  padding: 5px 10px;
   border-radius: 8px;
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 11px;
-  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
   cursor: pointer;
-  white-space: nowrap;
   transition: all 0.2s ease;
 }
 
-.role-tab-btn:hover {
+.chatbot-action-btn:hover {
+  background: rgba(94, 234, 212, 0.15);
+  border-color: #5eead4;
   color: #fff;
-  background: rgba(255, 255, 255, 0.05);
 }
 
-.role-tab-btn.active {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.2);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
-.role-icon {
-  display: flex;
-  align-items: center;
+.log-count {
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(94, 234, 212, 0.2);
+  padding: 1px 5px;
+  border-radius: 10px;
 }
 
 .chatbot-dot {

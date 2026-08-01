@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { FiMessageSquare, FiX, FiSend, FiCpu, FiBarChart2, FiBookOpen, FiGlobe } from "react-icons/fi";
-import { ROLES_DATA, RoleType, BASE_SYSTEM_GUARDRAILS } from "../data/cvData";
+import { FiMessageSquare, FiX, FiSend, FiDownload } from "react-icons/fi";
+import { CONVERSATIONAL_SYSTEM_PROMPT } from "../data/cvData";
 import "./Chatbot.css";
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
@@ -11,74 +11,105 @@ type Message = {
   text: string;
 };
 
-const ROLE_ICONS: Record<RoleType, React.ReactNode> = {
-  ai_engineer: <FiCpu size={13} />,
-  data_scientist: <FiBarChart2 size={13} />,
-  ml_researcher: <FiBookOpen size={13} />,
-  environmental_analyst: <FiGlobe size={13} />,
-};
+export interface ChatLogEntry {
+  timestamp: string;
+  inquiredRole: string;
+  question: string;
+  answer: string;
+}
 
 const Chatbot = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<RoleType>("ai_engineer");
+  const [inquiredRole, setInquiredRole] = useState<string>("Not Specified Yet");
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "init",
       sender: "bot",
-      text: ROLES_DATA["ai_engineer"].initialMessage,
+      text: "Hi! I am Akarsh's AI Assistant. Which role or position are you inquiring about regarding Akarsh?",
     },
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [chatLogs, setChatLogs] = useState<ChatLogEntry[]>(() => {
+    try {
+      const saved = localStorage.getItem("akarsh_chatbot_csv_logs");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("akarsh_chatbot_csv_logs", JSON.stringify(chatLogs));
+    } catch (err) {
+      console.error("Failed to save chat logs:", err);
+    }
+  }, [chatLogs]);
 
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages, isOpen, selectedRole]);
+  }, [messages, isOpen]);
 
-  const handleRoleChange = (newRole: RoleType) => {
-    if (newRole === selectedRole) return;
-    setSelectedRole(newRole);
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: Date.now().toString(),
-        sender: "bot",
-        text: `Switched focus persona to **${ROLES_DATA[newRole].title}**! ${ROLES_DATA[newRole].initialMessage}`,
-      },
+  const recordLogEntry = (userQuestion: string, botAnswer: string) => {
+    const entry: ChatLogEntry = {
+      timestamp: new Date().toISOString(),
+      inquiredRole: inquiredRole,
+      question: userQuestion,
+      answer: botAnswer,
+    };
+    setChatLogs((prev) => [...prev, entry]);
+  };
+
+  const downloadCSV = () => {
+    if (chatLogs.length === 0) {
+      alert("No question logs recorded yet!");
+      return;
+    }
+
+    const headers = ["Timestamp", "Inquired Role", "Question", "Bot Response"];
+    const rows = chatLogs.map((log) => [
+      `"${log.timestamp.replace(/"/g, '""')}"`,
+      `"${log.inquiredRole.replace(/"/g, '""')}"`,
+      `"${log.question.replace(/"/g, '""')}"`,
+      `"${log.answer.replace(/"/g, '""')}"`,
     ]);
+
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `akarsh_chatbot_questions_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleSend = async () => {
     if (!input.trim()) return;
 
-    const userMessage: Message = { id: Date.now().toString(), sender: "user", text: input.trim() };
+    const userText = input.trim();
+    const userMessage: Message = { id: Date.now().toString(), sender: "user", text: userText };
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
 
-    const activeRole = ROLES_DATA[selectedRole];
-    const systemPrompt = `
-      You are Akarsh's AI assistant specialized in his background as an ${activeRole.title}.
-      ROLE SPECIFIC HIGHLIGHTS:
-      ${activeRole.promptHighlights}
-      
-      ${BASE_SYSTEM_GUARDRAILS}
-    `;
+    // Simple heuristic to detect if user specified a role in early interaction
+    if (inquiredRole === "Not Specified Yet" && messages.length <= 3) {
+      setInquiredRole(userText);
+    }
 
     try {
       if (!GEMINI_API_KEY) {
         setTimeout(() => {
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: Date.now().toString(),
-              sender: "bot",
-              text: "I'm running in demo mode because no API key is set. Please add VITE_GEMINI_API_KEY in your ak.env file!",
-            },
-          ]);
+          const fallbackText =
+            "I'm running in demo mode because no API key is set. Please add VITE_GEMINI_API_KEY in your ak.env file!";
+          setMessages((prev) => [...prev, { id: Date.now().toString(), sender: "bot", text: fallbackText }]);
+          recordLogEntry(userText, fallbackText);
           setIsLoading(false);
         }, 1000);
         return;
@@ -90,13 +121,13 @@ const Chatbot = () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            system_instruction: { parts: [{ text: systemPrompt }] },
+            system_instruction: { parts: [{ text: CONVERSATIONAL_SYSTEM_PROMPT }] },
             contents: [
-              ...messages.slice(-5).map((m) => ({
+              ...messages.slice(-6).map((m) => ({
                 role: m.sender === "bot" ? "model" : "user",
                 parts: [{ text: m.text }],
               })),
-              { role: "user", parts: [{ text: userMessage.text }] },
+              { role: "user", parts: [{ text: userText }] },
             ],
           }),
         }
@@ -108,17 +139,14 @@ const Chatbot = () => {
       }
       const botText =
         data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't process that.";
+
       setMessages((prev) => [...prev, { id: Date.now().toString(), sender: "bot", text: botText }]);
+      recordLogEntry(userText, botText);
     } catch (error: any) {
       console.error(error);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          sender: "bot",
-          text: "Oops, an error occurred while connecting to my brain: " + error.message,
-        },
-      ]);
+      const errorText = "Oops, an error occurred while connecting to my brain: " + error.message;
+      setMessages((prev) => [...prev, { id: Date.now().toString(), sender: "bot", text: errorText }]);
+      recordLogEntry(userText, errorText);
     } finally {
       setIsLoading(false);
     }
@@ -135,33 +163,21 @@ const Chatbot = () => {
           <div className="chatbot-header">
             <div className="chatbot-title">
               <span className="chatbot-dot"></span>
-              Akarsh AI
-              <span className="role-active-badge" style={{ borderColor: ROLES_DATA[selectedRole].badgeColor }}>
-                {ROLES_DATA[selectedRole].shortLabel}
-              </span>
+              Akarsh AI Assistant
             </div>
-            <button className="chatbot-close" onClick={() => setIsOpen(false)}>
-              <FiX size={20} />
-            </button>
-          </div>
-
-          {/* Multi-Role Selector Tab Bar */}
-          <div className="chatbot-role-bar">
-            {(Object.keys(ROLES_DATA) as RoleType[]).map((roleKey) => {
-              const role = ROLES_DATA[roleKey];
-              const isActive = roleKey === selectedRole;
-              return (
-                <button
-                  key={roleKey}
-                  className={`role-tab-btn ${isActive ? "active" : ""}`}
-                  onClick={() => handleRoleChange(roleKey)}
-                  title={role.description}
-                >
-                  <span className="role-icon">{ROLE_ICONS[roleKey]}</span>
-                  <span className="role-label">{role.shortLabel}</span>
-                </button>
-              );
-            })}
+            <div className="chatbot-header-actions">
+              <button
+                className="chatbot-action-btn"
+                onClick={downloadCSV}
+                title={`Download CSV log (${chatLogs.length} questions recorded)`}
+              >
+                <FiDownload size={16} />
+                <span className="log-count">{chatLogs.length}</span>
+              </button>
+              <button className="chatbot-close" onClick={() => setIsOpen(false)}>
+                <FiX size={20} />
+              </button>
+            </div>
           </div>
 
           <div className="chatbot-messages">
@@ -190,7 +206,7 @@ const Chatbot = () => {
           <div className="chatbot-input-area">
             <input
               type="text"
-              placeholder={`Ask about ${ROLES_DATA[selectedRole].title} experience...`}
+              placeholder="State a role or ask a question..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
