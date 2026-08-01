@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from "react";
-import { FiMessageSquare, FiX, FiSend, FiDownload } from "react-icons/fi";
+import { FiMessageSquare, FiX, FiSend, FiDownload, FiKey, FiCheck } from "react-icons/fi";
 import { CONVERSATIONAL_SYSTEM_PROMPT } from "../data/cvData";
 import "./Chatbot.css";
 
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
+const ENV_GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
 
 type Message = {
   id: string;
@@ -20,6 +20,14 @@ export interface ChatLogEntry {
 
 const Chatbot = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [showKeyInput, setShowKeyInput] = useState(false);
+  const [apiKeyInput, setApiKeyInput] = useState<string>(() => {
+    return localStorage.getItem("user_gemini_api_key") || "";
+  });
+  const [savedKey, setSavedKey] = useState<string>(() => {
+    return localStorage.getItem("user_gemini_api_key") || ENV_GEMINI_API_KEY;
+  });
+
   const [inquiredRole, setInquiredRole] = useState<string>("Not Specified Yet");
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -53,7 +61,24 @@ const Chatbot = () => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages, isOpen]);
+  }, [messages, isOpen, showKeyInput]);
+
+  const handleSaveKey = () => {
+    const trimmed = apiKeyInput.trim();
+    if (trimmed) {
+      localStorage.setItem("user_gemini_api_key", trimmed);
+      setSavedKey(trimmed);
+      setShowKeyInput(false);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          sender: "bot",
+          text: "✅ Gemini API Key saved successfully! Ask me anything about Akarsh's skills and experience.",
+        },
+      ]);
+    }
+  };
 
   const recordLogEntry = (userQuestion: string, botAnswer: string) => {
     const entry: ChatLogEntry = {
@@ -98,81 +123,100 @@ const Chatbot = () => {
     setInput("");
     setIsLoading(true);
 
-    // Simple heuristic to detect if user specified a role in early interaction
     if (inquiredRole === "Not Specified Yet" && messages.length <= 3) {
       setInquiredRole(userText);
     }
 
-    try {
-      if (!GEMINI_API_KEY) {
-        setTimeout(() => {
-          const fallbackText =
-            "I'm running in demo mode because no API key is set. Please add VITE_GEMINI_API_KEY in your ak.env file!";
-          setMessages((prev) => [...prev, { id: Date.now().toString(), sender: "bot", text: fallbackText }]);
-          recordLogEntry(userText, fallbackText);
-          setIsLoading(false);
-        }, 1000);
-        return;
-      }
+    const activeKey = savedKey || ENV_GEMINI_API_KEY || localStorage.getItem("user_gemini_api_key") || "";
 
-      const candidateModels = [
-        "gemini-2.0-flash",
-        "gemini-1.5-flash-latest",
-        "gemini-1.5-flash",
-        "gemini-1.5-pro",
-      ];
+    if (!activeKey) {
+      setShowKeyInput(true);
+      setTimeout(() => {
+        const fallbackText =
+          "🔑 Please enter your Gemini API key using the Key button in the header or in the box above to enable AI answers!";
+        setMessages((prev) => [...prev, { id: Date.now().toString(), sender: "bot", text: fallbackText }]);
+        recordLogEntry(userText, fallbackText);
+        setIsLoading(false);
+      }, 500);
+      return;
+    }
 
-      let data: any = null;
-      let lastErrorMessage = "";
+    // Candidate endpoints to attempt in order
+    const candidateEndpoints = [
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${activeKey}`,
+      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${activeKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${activeKey}`,
+    ];
 
-      for (const model of candidateModels) {
-        try {
-          const res = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                system_instruction: { parts: [{ text: CONVERSATIONAL_SYSTEM_PROMPT }] },
-                contents: [
-                  ...messages.slice(-6).map((m) => ({
-                    role: m.sender === "bot" ? "model" : "user",
-                    parts: [{ text: m.text }],
-                  })),
-                  { role: "user", parts: [{ text: userText }] },
-                ],
-              }),
-            }
-          );
+    let data: any = null;
+    let lastErrorMessage = "";
 
-          const result = await res.json();
-          if (res.ok && !result.error) {
-            data = result;
-            break;
-          } else {
-            lastErrorMessage = result.error?.message || res.statusText;
-          }
-        } catch (err: any) {
-          lastErrorMessage = err.message;
+    for (const url of candidateEndpoints) {
+      try {
+        // Attempt 1: System instruction
+        let res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: CONVERSATIONAL_SYSTEM_PROMPT }] },
+            contents: [
+              ...messages.slice(-6).map((m) => ({
+                role: m.sender === "bot" ? "model" : "user",
+                parts: [{ text: m.text }],
+              })),
+              { role: "user", parts: [{ text: userText }] },
+            ],
+          }),
+        });
+
+        let result = await res.json();
+        if (res.ok && !result.error) {
+          data = result;
+          break;
         }
-      }
 
-      if (!data) {
-        throw new Error(lastErrorMessage || "Failed to reach Gemini models.");
-      }
-      const botText =
-        data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't process that.";
+        // Attempt 2: Universal inline prompt payload if system_instruction failed
+        res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [
+              { role: "user", parts: [{ text: CONVERSATIONAL_SYSTEM_PROMPT }] },
+              { role: "model", parts: [{ text: "Understood. I am ready to answer questions about Akarsh's background." }] },
+              ...messages.slice(-6).map((m) => ({
+                role: m.sender === "bot" ? "model" : "user",
+                parts: [{ text: m.text }],
+              })),
+              { role: "user", parts: [{ text: userText }] },
+            ],
+          }),
+        });
 
+        result = await res.json();
+        if (res.ok && !result.error) {
+          data = result;
+          break;
+        } else {
+          lastErrorMessage = result.error?.message || res.statusText;
+        }
+      } catch (err: any) {
+        lastErrorMessage = err.message;
+      }
+    }
+
+    if (data && data.candidates?.[0]?.content?.parts?.[0]?.text) {
+      const botText = data.candidates[0].content.parts[0].text;
       setMessages((prev) => [...prev, { id: Date.now().toString(), sender: "bot", text: botText }]);
       recordLogEntry(userText, botText);
-    } catch (error: any) {
-      console.error(error);
-      const errorText = "Oops, an error occurred while connecting to my brain: " + error.message;
+    } else {
+      const errorText = `Unable to connect to Gemini API. Error: ${lastErrorMessage || "Invalid key or endpoint"}. Please click the 🔑 Key button above to update your API key!`;
       setMessages((prev) => [...prev, { id: Date.now().toString(), sender: "bot", text: errorText }]);
       recordLogEntry(userText, errorText);
-    } finally {
-      setIsLoading(false);
+      setShowKeyInput(true);
     }
+
+    setIsLoading(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -190,11 +234,18 @@ const Chatbot = () => {
             </div>
             <div className="chatbot-header-actions">
               <button
+                className={`chatbot-action-btn ${showKeyInput ? "active-key" : ""}`}
+                onClick={() => setShowKeyInput(!showKeyInput)}
+                title="Configure Gemini API Key"
+              >
+                <FiKey size={15} />
+              </button>
+              <button
                 className="chatbot-action-btn"
                 onClick={downloadCSV}
                 title={`Download CSV log (${chatLogs.length} questions recorded)`}
               >
-                <FiDownload size={16} />
+                <FiDownload size={15} />
                 <span className="log-count">{chatLogs.length}</span>
               </button>
               <button className="chatbot-close" onClick={() => setIsOpen(false)}>
@@ -202,6 +253,23 @@ const Chatbot = () => {
               </button>
             </div>
           </div>
+
+          {showKeyInput && (
+            <div className="chatbot-key-banner">
+              <div className="key-banner-title">Gemini API Key Settings</div>
+              <div className="key-input-row">
+                <input
+                  type="password"
+                  placeholder="Paste AIzaSy... API key here"
+                  value={apiKeyInput}
+                  onChange={(e) => setApiKeyInput(e.target.value)}
+                />
+                <button onClick={handleSaveKey} disabled={!apiKeyInput.trim()}>
+                  <FiCheck size={16} /> Save
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="chatbot-messages">
             {messages.map((msg) => (
