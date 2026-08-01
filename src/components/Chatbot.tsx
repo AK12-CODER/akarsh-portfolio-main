@@ -195,8 +195,10 @@ const Chatbot = () => {
       recordLogEntry(userText, botText);
     } else {
       console.error("Gemini API Error:", lastErrorMessage);
-      const fallbackMsg =
-        "Sorry, I am currently unable to process your query. Please try again shortly!";
+      const isKeyMissing = !GEMINI_API_KEY;
+      const fallbackMsg = isKeyMissing
+        ? "No Gemini API Key found. Please add VITE_GEMINI_API_KEY to your Vercel Environment Variables or ak.env file!"
+        : `Unable to connect to Gemini API (${lastErrorMessage || "API key error"}). Please verify VITE_GEMINI_API_KEY in Vercel Settings.`;
       setMessages((prev) => [...prev, { id: Date.now().toString(), sender: "bot", text: fallbackMsg }]);
       recordLogEntry(userText, fallbackMsg);
     }
