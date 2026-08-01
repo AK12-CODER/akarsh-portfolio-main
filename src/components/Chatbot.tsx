@@ -115,27 +115,50 @@ const Chatbot = () => {
         return;
       }
 
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            system_instruction: { parts: [{ text: CONVERSATIONAL_SYSTEM_PROMPT }] },
-            contents: [
-              ...messages.slice(-6).map((m) => ({
-                role: m.sender === "bot" ? "model" : "user",
-                parts: [{ text: m.text }],
-              })),
-              { role: "user", parts: [{ text: userText }] },
-            ],
-          }),
-        }
-      );
+      const candidateModels = [
+        "gemini-2.0-flash",
+        "gemini-1.5-flash-latest",
+        "gemini-1.5-flash",
+        "gemini-1.5-pro",
+      ];
 
-      const data = await response.json();
-      if (data.error) {
-        throw new Error(data.error.message);
+      let data: any = null;
+      let lastErrorMessage = "";
+
+      for (const model of candidateModels) {
+        try {
+          const res = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                system_instruction: { parts: [{ text: CONVERSATIONAL_SYSTEM_PROMPT }] },
+                contents: [
+                  ...messages.slice(-6).map((m) => ({
+                    role: m.sender === "bot" ? "model" : "user",
+                    parts: [{ text: m.text }],
+                  })),
+                  { role: "user", parts: [{ text: userText }] },
+                ],
+              }),
+            }
+          );
+
+          const result = await res.json();
+          if (res.ok && !result.error) {
+            data = result;
+            break;
+          } else {
+            lastErrorMessage = result.error?.message || res.statusText;
+          }
+        } catch (err: any) {
+          lastErrorMessage = err.message;
+        }
+      }
+
+      if (!data) {
+        throw new Error(lastErrorMessage || "Failed to reach Gemini models.");
       }
       const botText =
         data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't process that.";
