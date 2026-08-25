@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { FiMessageSquare, FiX, FiSend } from "react-icons/fi";
 import { CONVERSATIONAL_SYSTEM_PROMPT } from "../data/cvData";
+import { generateLocalAnswer } from "../utils/chatbotEngine";
 import "./Chatbot.css";
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
@@ -123,69 +124,70 @@ const Chatbot = () => {
     setInput("");
     setIsLoading(true);
 
+    let currentInquiredRole = inquiredRole;
     if (inquiredRole === "Not Specified Yet" && messages.length <= 3) {
+      currentInquiredRole = userText;
       setInquiredRole(userText);
     }
 
-    const candidateEndpoints = [
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${GEMINI_API_KEY}`,
-    ];
-
     let data: any = null;
-    let lastErrorMessage = "";
+    const isKeyValidFormat = GEMINI_API_KEY && GEMINI_API_KEY.length > 20 && !GEMINI_API_KEY.includes("your_gemini_api_key");
 
-    for (const url of candidateEndpoints) {
-      try {
-        let res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            system_instruction: { parts: [{ text: CONVERSATIONAL_SYSTEM_PROMPT }] },
-            contents: [
-              ...messages.slice(-6).map((m) => ({
-                role: m.sender === "bot" ? "model" : "user",
-                parts: [{ text: m.text }],
-              })),
-              { role: "user", parts: [{ text: userText }] },
-            ],
-          }),
-        });
+    if (isKeyValidFormat) {
+      const candidateEndpoints = [
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      ];
 
-        let result = await res.json();
-        if (res.ok && !result.error) {
-          data = result;
-          break;
+      for (const url of candidateEndpoints) {
+        try {
+          let res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              system_instruction: { parts: [{ text: CONVERSATIONAL_SYSTEM_PROMPT }] },
+              contents: [
+                ...messages.slice(-6).map((m) => ({
+                  role: m.sender === "bot" ? "model" : "user",
+                  parts: [{ text: m.text }],
+                })),
+                { role: "user", parts: [{ text: userText }] },
+              ],
+            }),
+          });
+
+          let result = await res.json();
+          if (res.ok && !result.error && result.candidates?.[0]?.content?.parts?.[0]?.text) {
+            data = result;
+            break;
+          }
+
+          // Fallback payload without system_instruction if rejected by endpoint
+          res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [
+                { role: "user", parts: [{ text: CONVERSATIONAL_SYSTEM_PROMPT }] },
+                { role: "model", parts: [{ text: "Understood. I am ready to answer questions about Akarsh's background." }] },
+                ...messages.slice(-6).map((m) => ({
+                  role: m.sender === "bot" ? "model" : "user",
+                  parts: [{ text: m.text }],
+                })),
+                { role: "user", parts: [{ text: userText }] },
+              ],
+            }),
+          });
+
+          result = await res.json();
+          if (res.ok && !result.error && result.candidates?.[0]?.content?.parts?.[0]?.text) {
+            data = result;
+            break;
+          }
+        } catch {
+          // Ignore network error and proceed to local knowledge fallback
         }
-
-        // Fallback payload without system_instruction if rejected by endpoint
-        res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [
-              { role: "user", parts: [{ text: CONVERSATIONAL_SYSTEM_PROMPT }] },
-              { role: "model", parts: [{ text: "Understood. I am ready to answer questions about Akarsh's background." }] },
-              ...messages.slice(-6).map((m) => ({
-                role: m.sender === "bot" ? "model" : "user",
-                parts: [{ text: m.text }],
-              })),
-              { role: "user", parts: [{ text: userText }] },
-            ],
-          }),
-        });
-
-        result = await res.json();
-        if (res.ok && !result.error) {
-          data = result;
-          break;
-        } else {
-          lastErrorMessage = result.error?.message || res.statusText;
-        }
-      } catch (err: any) {
-        lastErrorMessage = err.message;
       }
     }
 
@@ -194,13 +196,10 @@ const Chatbot = () => {
       setMessages((prev) => [...prev, { id: Date.now().toString(), sender: "bot", text: botText }]);
       recordLogEntry(userText, botText);
     } else {
-      console.error("Gemini API Error:", lastErrorMessage);
-      const isKeyMissing = !GEMINI_API_KEY;
-      const fallbackMsg = isKeyMissing
-        ? "No Gemini API Key found. Please add VITE_GEMINI_API_KEY to your Vercel Environment Variables or ak.env file!"
-        : `Unable to connect to Gemini API (${lastErrorMessage || "API key error"}). Please verify VITE_GEMINI_API_KEY in Vercel Settings.`;
-      setMessages((prev) => [...prev, { id: Date.now().toString(), sender: "bot", text: fallbackMsg }]);
-      recordLogEntry(userText, fallbackMsg);
+      // Smart local fallback using Akarsh's full CV Knowledge base
+      const botText = generateLocalAnswer(userText, currentInquiredRole, messages);
+      setMessages((prev) => [...prev, { id: Date.now().toString(), sender: "bot", text: botText }]);
+      recordLogEntry(userText, botText);
     }
 
     setIsLoading(false);
