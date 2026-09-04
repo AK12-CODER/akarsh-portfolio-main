@@ -15,7 +15,7 @@ const Career = () => {
           <div className="career-info-box">
             <div className="career-info-in">
               <div className="career-role">
-                <h4>M.Sc. in Water Science</h4>
+                <h4>M.Sc. in Applied Science</h4>
                 <h5>INRS, Québec, Canada</h5>
               </div>
               <h3>2024-NOW</h3>

@@ -2,20 +2,20 @@ export const FULL_CV_KNOWLEDGE = `
 AKARSH KUMAR SINGH - CV KNOWLEDGE BASE
 
 ROLES & SUMMARY:
-Applied Machine Learning Research Engineer, Data Scientist/Analyst, Machine Learning Researcher, and Environmental Analyst (Water Science Specialist).
+Applied Machine Learning Research Engineer, Data Scientist/Analyst, Machine Learning Researcher, and Environmental Analyst (Applied Science Specialist).
 Experienced in building, evaluating, and deploying deep learning models (LSTM/CNN in TensorFlow & PyTorch) for time-series forecasting, statistical benchmarking, data analysis, and production pipeline integration.
 
 VALID EXPERTISE & ROLES:
 1. Applied Machine Learning & Deep Learning Engineer
 2. Data Scientist / Data Analyst
 3. Machine Learning Researcher (M.Sc. INRS)
-4. Environmental Analyst / Hydrological Data Specialist (Water Science)
+4. Environmental Analyst / Hydrological Data Specialist (Applied Science)
 5. Software Developer / CodeChef Community Leader
 
 DETAILED RESUME DATA:
 
 1. EDUCATION:
-- M.Sc. (recherche) in Water Science — INRS (Institut national de la recherche scientifique), Québec, Canada (Sep 2024 – Present) | GPA: 3.4 / 4.0
+- M.Sc. (recherche) in Applied Science — INRS (Institut national de la recherche scientifique), Québec, Canada (Sep 2024 – Present) | GPA: 3.4 / 4.0
   * Thesis: Bias correction of ensemble environmental forecasts using deep learning (LSTM)
   * Focus: Numerical modeling, machine learning, deep learning, scientific data analysis.
 - B.Tech in Computer Science and Engineering — SRM Institute of Science and Technology, India (Jun 2019 – May 2023) | GPA: 8.64 / 10

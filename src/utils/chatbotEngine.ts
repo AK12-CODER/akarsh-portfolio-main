@@ -23,7 +23,7 @@ export function generateLocalAnswer(
   if (/education|degree|university|college|gpa|study|studied|m\.?sc|b\.?tech|inrs|srm/i.test(q)) {
     return (
       "Akarsh's Educational Background:\n\n" +
-      "🎓 M.Sc. (recherche) in Water Science — INRS (Institut national de la recherche scientifique), Québec, Canada (Sep 2024 – Present) | GPA: 3.4/4.0\n" +
+      "🎓 M.Sc. (recherche) in Applied Science — INRS (Institut national de la recherche scientifique), Québec, Canada (Sep 2024 – Present) | GPA: 3.4/4.0\n" +
       "• Thesis: Bias correction of ensemble environmental forecasts using deep learning (LSTM).\n" +
       "• Focus: Numerical modeling, deep learning (LSTM/CNN), scientific data analysis.\n\n" +
       "🎓 B.Tech in Computer Science & Engineering — SRM Institute of Science & Technology, India (2019 – 2023) | GPA: 8.64/10\n" +
@@ -112,7 +112,7 @@ export function generateLocalAnswer(
   // 9. Explicit Profile / About / Introduction Requests
   if (/who are you|tell me about|intro|introduction|about akarsh|summary|background|profile/i.test(q)) {
     return (
-      "Akarsh Kumar Singh is an Applied Machine Learning Researcher & Data Scientist currently pursuing his M.Sc. in Water Science at INRS (Québec, Canada).\n\n" +
+      "Akarsh Kumar Singh is an Applied Machine Learning Researcher & Data Scientist currently pursuing his M.Sc. in Applied Science at INRS (Québec, Canada).\n\n" +
       "He specializes in Deep Learning (LSTM/CNN), Time-Series Forecasting, Data Analysis, and Software Engineering. How can I help you learn more about his work, research, or skills?"
     );
   }
