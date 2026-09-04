@@ -4,7 +4,7 @@
  */
 export function generateLocalAnswer(
   userQuestion: string,
-  inquiredRole: string = "Not Specified Yet",
+  _inquiredRole: string = "Not Specified Yet",
   messageHistory: { sender: "user" | "bot"; text: string }[] = []
 ): string {
   const q = userQuestion.toLowerCase().trim();
@@ -104,18 +104,22 @@ export function generateLocalAnswer(
     );
   }
 
-  // 8. General Hi / Hello / Introduction
-  if (/^hi$|^hello$|^hey$|who are you|intro|introduction|about|background/i.test(q)) {
+  // 8. Casual Greetings (Friendly & Concise, no profile dump)
+  if (/^(hi|hello|hey|hey there|hi there|good morning|good afternoon|good evening|howdy|greetings|what'?s up)$/i.test(q)) {
+    return "Hello! 👋 Welcome to Akarsh's portfolio. I'm Akarsh's AI Assistant. How can I help you today? Feel free to ask me about his experience in Machine Learning, Data Science, AI Research, or Software Engineering!";
+  }
+
+  // 9. Explicit Profile / About / Introduction Requests
+  if (/who are you|tell me about|intro|introduction|about akarsh|summary|background|profile/i.test(q)) {
     return (
       "Akarsh Kumar Singh is an Applied Machine Learning Researcher & Data Scientist currently pursuing his M.Sc. in Water Science at INRS (Québec, Canada).\n\n" +
       "He specializes in Deep Learning (LSTM/CNN), Time-Series Forecasting, Data Analysis, and Software Engineering. How can I help you learn more about his work, research, or skills?"
     );
   }
 
-  // Default intelligent response summarizing background and inviting specific questions
+  // Default friendly response inviting specific questions
   return (
-    `Regarding Akarsh's background in relation to "${inquiredRole !== "Not Specified Yet" ? inquiredRole : "Machine Learning & Software Engineering"}":\n\n` +
-    "Akarsh holds an M.Sc. in Water Science from INRS (Canada) and a B.Tech in CS from SRMIST. He specializes in Deep Learning (LSTM/PyTorch/TensorFlow), Time-Series Forecasting, Data Analytics, and Software Engineering.\n\n" +
+    "How can I assist you regarding Akarsh's background?\n\n" +
     "Feel free to ask about his:\n" +
     "• 🎓 Education & GPA\n" +
     "• 🔬 Research & Work Experience\n" +

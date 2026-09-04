@@ -26,7 +26,7 @@ const Chatbot = () => {
     {
       id: "init",
       sender: "bot",
-      text: "Hi! I am Akarsh's AI Assistant. Which role or position are you inquiring about regarding Akarsh?",
+      text: "Hello! 👋 Welcome to Akarsh's portfolio. I'm Akarsh's AI Assistant. How can I help you today?",
     },
   ]);
   const [input, setInput] = useState("");
