@@ -49,7 +49,7 @@ const SocialIcons = () => {
       updatePosition();
 
       return () => {
-        elem.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mousemove", onMouseMove);
       };
     });
   }, []);
