@@ -48,38 +48,68 @@
 }
 
 .chatbot-header {
-  padding: 16px;
+  padding: 12px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(0, 0, 0, 0.25);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(0, 0, 0, 0.35);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.chatbot-title {
-  color: #fff;
-  font-size: 15px;
-  font-weight: 600;
+.chatbot-header-info {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   cursor: pointer;
   user-select: none;
 }
 
+.chatbot-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 210, 255, 0.3);
+}
+
+.chatbot-header-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.chatbot-title {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.chatbot-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 2px;
+}
+
 .chatbot-dot {
-  width: 9px;
-  height: 9px;
+  width: 7px;
+  height: 7px;
   background-color: #5eead4;
   border-radius: 50%;
   display: inline-block;
-  box-shadow: 0 0 10px #5eead4;
+  box-shadow: 0 0 8px #5eead4;
   animation: pulse 2s infinite;
 }
 
 @keyframes pulse {
   0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(94, 234, 212, 0.7); }
-  70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(94, 234, 212, 0); }
+  70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(94, 234, 212, 0); }
   100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(94, 234, 212, 0); }
 }
 
@@ -89,6 +119,7 @@
   color: rgba(255, 255, 255, 0.6);
   cursor: pointer;
   transition: color 0.2s;
+  padding: 4px;
 }
 
 .chatbot-close:hover {
@@ -118,6 +149,12 @@
 .chatbot-msg-row {
   display: flex;
   width: 100%;
+  animation: fadeIn 0.25s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .user-row {
@@ -129,45 +166,86 @@
 }
 
 .chatbot-bubble {
-  max-width: 80%;
-  padding: 10px 14px;
-  border-radius: 12px;
-  font-size: 14px;
-  line-height: 1.4;
+  max-width: 84%;
+  padding: 11px 15px;
+  border-radius: 14px;
+  font-size: 13.5px;
+  line-height: 1.5;
   word-wrap: break-word;
 }
 
 .user-bubble {
   background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
   color: white;
-  border-bottom-right-radius: 2px;
+  border-bottom-right-radius: 3px;
 }
 
 .bot-bubble {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
   color: #eae5ec;
-  border-bottom-left-radius: 2px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom-left-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.chatbot-suggestions {
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chatbot-suggestions-title {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 500;
+  margin: 0;
+  padding-left: 2px;
+}
+
+.chatbot-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chatbot-chip {
+  background: rgba(94, 234, 212, 0.08);
+  border: 1px solid rgba(94, 234, 212, 0.25);
+  color: #5eead4;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.chatbot-chip:hover {
+  background: rgba(94, 234, 212, 0.18);
+  border-color: #5eead4;
+  transform: translateX(3px);
 }
 
 .chatbot-input-area {
   display: flex;
   padding: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  background: rgba(0, 0, 0, 0.2);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.25);
   align-items: center;
   gap: 8px;
 }
 
 .chatbot-input-area input {
   flex: 1;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   padding: 10px 14px;
   border-radius: 8px;
   color: white;
   outline: none;
   font-family: inherit;
+  font-size: 13.5px;
   transition: border-color 0.2s;
 }
 
@@ -202,9 +280,9 @@
 
 .typing-indicator span {
   display: inline-block;
-  width: 5px;
-  height: 5px;
-  background-color: #eae5ec;
+  width: 6px;
+  height: 6px;
+  background-color: #5eead4;
   border-radius: 50%;
   margin: 0 2px;
   animation: bounce 1.4s infinite ease-in-out both;
@@ -217,3 +295,4 @@
   0%, 80%, 100% { transform: scale(0); }
   40% { transform: scale(1); }
 }
+

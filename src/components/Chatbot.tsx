@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { FiMessageSquare, FiX, FiSend } from "react-icons/fi";
+import { FiMessageSquare, FiX, FiSend, FiUser } from "react-icons/fi";
 import { CONVERSATIONAL_SYSTEM_PROMPT } from "../data/cvData";
 import { generateLocalAnswer } from "../utils/chatbotEngine";
 import "./Chatbot.css";
@@ -19,6 +19,13 @@ export interface ChatLogEntry {
   answer: string;
 }
 
+const SUGGESTED_QUESTIONS = [
+  "🤖 Tell me about Akarsh's ML research",
+  "🎓 Education & M.Sc. Thesis",
+  "🛠️ What technical stack does he use?",
+  "✉️ How can I contact or hire Akarsh?",
+];
+
 const Chatbot = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [inquiredRole, setInquiredRole] = useState<string>("Not Specified Yet");
@@ -26,7 +33,7 @@ const Chatbot = () => {
     {
       id: "init",
       sender: "bot",
-      text: "Hello! 👋 Welcome to Akarsh's portfolio. I'm Akarsh's AI Assistant. How can I help you today?",
+      text: "Hey there! 👋 Welcome to Akarsh's portfolio. I'm his personal AI assistant! How can I help you today? Feel free to ask me anything about his ML research, projects, or background.",
     },
   ]);
   const [input, setInput] = useState("");
@@ -88,7 +95,7 @@ const Chatbot = () => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages, isOpen]);
+  }, [messages, isLoading, isOpen]);
 
   const recordLogEntry = (userQuestion: string, botAnswer: string) => {
     const entry: ChatLogEntry = {
@@ -115,10 +122,10 @@ const Chatbot = () => {
     }, 1500);
   };
 
-  const handleSend = async () => {
-    if (!input.trim()) return;
+  const processUserQuery = async (text: string) => {
+    if (!text.trim() || isLoading) return;
 
-    const userText = input.trim();
+    const userText = text.trim();
     const userMessage: Message = { id: Date.now().toString(), sender: "user", text: userText };
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
@@ -130,7 +137,7 @@ const Chatbot = () => {
       setInquiredRole(userText);
     }
 
-    let data: any = null;
+    let rawBotText = "";
     const isKeyValidFormat = GEMINI_API_KEY && GEMINI_API_KEY.length > 20 && !GEMINI_API_KEY.includes("your_gemini_api_key");
 
     if (isKeyValidFormat) {
@@ -159,7 +166,7 @@ const Chatbot = () => {
 
           let result = await res.json();
           if (res.ok && !result.error && result.candidates?.[0]?.content?.parts?.[0]?.text) {
-            data = result;
+            rawBotText = result.candidates[0].content.parts[0].text;
             break;
           }
 
@@ -182,7 +189,7 @@ const Chatbot = () => {
 
           result = await res.json();
           if (res.ok && !result.error && result.candidates?.[0]?.content?.parts?.[0]?.text) {
-            data = result;
+            rawBotText = result.candidates[0].content.parts[0].text;
             break;
           }
         } catch {
@@ -191,18 +198,20 @@ const Chatbot = () => {
       }
     }
 
-    if (data && data.candidates?.[0]?.content?.parts?.[0]?.text) {
-      const botText = data.candidates[0].content.parts[0].text;
-      setMessages((prev) => [...prev, { id: Date.now().toString(), sender: "bot", text: botText }]);
-      recordLogEntry(userText, botText);
-    } else {
-      // Smart local fallback using Akarsh's full CV Knowledge base
-      const botText = generateLocalAnswer(userText, currentInquiredRole, messages);
-      setMessages((prev) => [...prev, { id: Date.now().toString(), sender: "bot", text: botText }]);
-      recordLogEntry(userText, botText);
+    if (!rawBotText) {
+      rawBotText = generateLocalAnswer(userText, currentInquiredRole, messages);
     }
 
-    setIsLoading(false);
+    // Brief natural human typing delay (700ms) for an organic feel
+    setTimeout(() => {
+      setMessages((prev) => [...prev, { id: Date.now().toString(), sender: "bot", text: rawBotText }]);
+      recordLogEntry(userText, rawBotText);
+      setIsLoading(false);
+    }, 700);
+  };
+
+  const handleSend = () => {
+    processUserQuery(input);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -214,9 +223,19 @@ const Chatbot = () => {
       {isOpen ? (
         <div className="chatbot-modal">
           <div className="chatbot-header">
-            <div className="chatbot-title" onClick={handleTitleClick} title="Akarsh AI Assistant">
-              <span className="chatbot-dot"></span>
-              Akarsh AI Assistant
+            <div className="chatbot-header-info" onClick={handleTitleClick} title="Akarsh's Assistant">
+              <div className="chatbot-avatar">
+                <FiUser size={16} />
+              </div>
+              <div className="chatbot-header-text">
+                <div className="chatbot-title">
+                  Akarsh's Assistant
+                </div>
+                <div className="chatbot-status">
+                  <span className="chatbot-dot"></span>
+                  Online • Replies instantly
+                </div>
+              </div>
             </div>
             <button className="chatbot-close" onClick={() => setIsOpen(false)}>
               <FiX size={20} />
@@ -230,10 +249,33 @@ const Chatbot = () => {
                 className={`chatbot-msg-row ${msg.sender === "user" ? "user-row" : "bot-row"}`}
               >
                 <div className={`chatbot-bubble ${msg.sender === "user" ? "user-bubble" : "bot-bubble"}`}>
-                  {msg.text}
+                  {msg.text.split('\n').map((paragraph, idx) => (
+                    <span key={idx}>
+                      {paragraph}
+                      {idx < msg.text.split('\n').length - 1 && <br />}
+                    </span>
+                  ))}
                 </div>
               </div>
             ))}
+
+            {messages.length <= 2 && !isLoading && (
+              <div className="chatbot-suggestions">
+                <p className="chatbot-suggestions-title">Quick questions:</p>
+                <div className="chatbot-chips">
+                  {SUGGESTED_QUESTIONS.map((qText, i) => (
+                    <button
+                      key={i}
+                      className="chatbot-chip"
+                      onClick={() => processUserQuery(qText)}
+                    >
+                      {qText}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {isLoading && (
               <div className="chatbot-msg-row bot-row">
                 <div className="chatbot-bubble bot-bubble typing-indicator">
@@ -249,7 +291,7 @@ const Chatbot = () => {
           <div className="chatbot-input-area">
             <input
               type="text"
-              placeholder="State a role or ask a question..."
+              placeholder="Ask a question or state a role..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
@@ -269,3 +311,4 @@ const Chatbot = () => {
 };
 
 export default Chatbot;
+
