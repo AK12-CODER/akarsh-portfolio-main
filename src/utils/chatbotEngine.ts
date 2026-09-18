@@ -20,21 +20,26 @@ export function generateLocalAnswer(
   }
 
   // Small Talk & Greetings
-  if (/^(hi|hello|hey|hey there|hi there|good morning|good afternoon|good evening|howdy|greetings|what'?s up|yo)$/i.test(q)) {
-    return "Hey there! 👋 Welcome to Akarsh's portfolio! I'm his personal AI assistant. How's your day going? Feel free to ask me anything about his ML research, tech stack, or background!";
+  if (/^(hi|hello|hey|hey there|hi there|good morning|good afternoon|good evening|howdy|greetings|what'?s up|sup|yo|wassup)\b/i.test(q)) {
+    return "Hey there! 👋 Welcome to Akarsh's portfolio! I'm his personal AI assistant. I'm doing great—how's your day going? Feel free to ask me anything about his ML research, tech stack, or background!";
   }
 
-  if (/how are you|how'?s it going|how do you do/i.test(q)) {
-    return "I'm doing great, thank you for asking! 😊 I'm here to help answer any questions you have about Akarsh's work in Machine Learning, research projects, publications, or background. What would you like to explore today?";
+  if (/how (are|r) (you|u)|how'?s (it|your day) going|how do you do|hbu|how about you|how are things|how you doing/i.test(q)) {
+    return "I'm doing great, thank you for asking! 😊 How are you doing today? I'm here to help answer any questions you have about Akarsh's research in Machine Learning, deep learning projects, publications, or technical background. What would you like to explore?";
   }
 
-  if (/who are you|what are you|your name|what can you do|about you/i.test(q)) {
-    return "I'm Akarsh's personal AI assistant! I represent Akarsh on his portfolio and can answer questions about his M.Sc. research at INRS, deep learning projects, publications, technical skills, and how to get in touch with him.";
+  if (/nice to meet|pleasure|glad to meet/i.test(q)) {
+    return "Nice to meet you as well! 😊 Welcome to Akarsh's portfolio. How can I assist you today?";
   }
 
-  if (/thank|thanks|awesome|great|cool|perfect|got it/i.test(q)) {
+  if (/who are you|what are you|your name|what can you do|about you|tell me about yourself/i.test(q)) {
+    return "I'm Akarsh's personal AI assistant! I represent Akarsh on his portfolio and can answer questions about his M.Sc. research at INRS in Québec, deep learning projects, publications, technical skills, and how to get in touch with him.";
+  }
+
+  if (/thank|thanks|awesome|great|cool|perfect|got it|sounds good|nice/i.test(q)) {
     return "You're very welcome! 😊 Let me know if there's anything else about Akarsh's research, skills, or projects I can help you with!";
   }
+
 
   // 1. Education
   if (/education|degree|university|college|gpa|study|studied|m\.?sc|b\.?tech|inrs|srm/i.test(q)) {
